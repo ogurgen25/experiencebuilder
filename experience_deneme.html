@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harita Koordinat Paylaşımı</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.26/"></script>
+  <style>
+    #viewDiv {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/widgets/CoordinateConversion",
+      "esri/geometry/Point"
+    ], function (Map, MapView, CoordinateConversion, Point) {
+      
+      const map = new Map({ basemap: "streets" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [29.0, 41.0],
+        zoom: 10
+      });
+
+      const coordinateWidget = new CoordinateConversion({ view: view });
+      view.ui.add(coordinateWidget, "bottom-left");
+
+      view.on("click", function (event) {
+        const point = new Point({
+          longitude: event.mapPoint.longitude,
+          latitude: event.mapPoint.latitude
+        });
+
+        const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
+
+        alert(`Koordinatlar paylaşıma hazır:\n${shareableLink}`);
+
+        navigator.clipboard.writeText(shareableLink).then(function () {
+          console.log("Bağlantı kopyalandı: " + shareableLink);
+        }, function (err) {
+          console.error("Bağlantı kopyalanırken hata oluştu", err);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
