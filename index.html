@@ -43,7 +43,7 @@
         });
 
         const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
-        const whatsappMessage = `Vaka'ya Ait Koordinat PAylaşıyorum! Koordinatlar: ${shareableLink}`;
+        const whatsappMessage = `Vaka'ya Ait Koordinat Paylaşıyorum! Koordinatlar: ${shareableLink}`;
         const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
 
         if (confirm(`Koordinatlar paylaşıma hazır:\n${shareableLink}\n\nWhatsApp ile paylaşmak ister misiniz?`)) {
