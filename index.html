@@ -8,34 +8,112 @@
   <script src="https://js.arcgis.com/4.26/"></script>
   <style>
     #viewDiv {
-      height: 100vh;
+      height: 90vh;
       width: 100%;
+    }
+    #searchContainer {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+    #searchInput {
+      padding: 5px;
+      width: 200px;
+    }
+    #searchButton {
+      padding: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
+  <div id="searchContainer">
+    <input type="text" id="searchInput" placeholder="KIMLIKNO girin">
+    <button id="searchButton">Ara</button>
+  </div>
   <div id="viewDiv"></div>
 
   <script>
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/widgets/CoordinateConversion",
+      "esri/Graphic",
+      "esri/layers/FeatureLayer",
       "esri/geometry/Point"
-    ], function (Map, MapView, CoordinateConversion, Point) {
+    ], function (Map, MapView, Graphic, FeatureLayer, Point) {
       
-      const map = new Map({ basemap: "satellite" }); // Imagery tarzı harita
+      const map = new Map({ basemap: "satellite" });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
         center: [41.2867, 39.9208], // Erzurum koordinatları
-        zoom: 15
+        zoom: 10
       });
 
-      const coordinateWidget = new CoordinateConversion({ view: view });
-      view.ui.add(coordinateWidget, "bottom-left");
+      // ✅ NUMARATAJ KATMANI
+      const numaratajLayer = new FeatureLayer({
+        url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer/0"
+      });
 
+      map.add(numaratajLayer);
+
+      // 🔍 Arama Butonu İşlevi
+      document.getElementById("searchButton").addEventListener("click", function () {
+        let kimlikNo = document.getElementById("searchInput").value.trim();
+        
+        if (!kimlikNo) {
+          alert("Lütfen bir KIMLIKNO girin.");
+          return;
+        }
+
+        // 🔍 ArcGIS Query Yapısı
+        const query = numaratajLayer.createQuery();
+        query.where = `kimlikno = '${kimlikNo}'`; // Küçük harfli "kimlikno" kullanıldı
+        query.returnGeometry = true;
+        query.outFields = ["kimlikno"];
+
+        numaratajLayer.queryFeatures(query)
+          .then(function (response) {
+            if (response.features.length > 0) {
+              const feature = response.features[0]; // İlk bulunan kayıt
+              const point = feature.geometry; // Nokta geometrisini al
+
+              // 📌 Haritayı noktaya kaydır
+              view.goTo({
+                target: point,
+                zoom: 18
+              });
+
+              // 🟥 Grafik ekleyerek işaretle
+              const graphic = new Graphic({
+                geometry: point,
+                symbol: {
+                  type: "simple-marker",
+                  color: "red",
+                  size: "12px"
+                }
+              });
+
+              view.graphics.removeAll(); // Önceki işaretleri temizle
+              view.graphics.add(graphic);
+
+            } else {
+              alert("Girilen kimlikno ile eşleşen bir kayıt bulunamadı.");
+            }
+          })
+          .catch(function (error) {
+            console.error("❌ Sorgu hatası:", error);
+            alert("Bir hata oluştu. Konsolu kontrol edin.");
+          });
+      });
+
+      // 🟢 Tıklanan Noktayı WhatsApp ile Paylaşma
       view.on("click", function (event) {
         const point = new Point({
           longitude: event.mapPoint.longitude,
@@ -43,7 +121,7 @@
         });
 
         const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
-        const whatsappMessage = `Vaka'ya Ait Koordinat Paylaşıyorum! Koordinatlar: ${shareableLink}`;
+        const whatsappMessage = `Haritada bir nokta paylaşıyorum! Koordinatlar: ${shareableLink}`;
         const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
 
         if (confirm(`Koordinatlar paylaşıma hazır:\n${shareableLink}\n\nWhatsApp ile paylaşmak ister misiniz?`)) {
@@ -56,6 +134,7 @@
           console.error("Bağlantı kopyalanırken hata oluştu", err);
         });
       });
+
     });
   </script>
 </body>
