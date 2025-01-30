@@ -44,8 +44,11 @@
       "esri/views/MapView",
       "esri/Graphic",
       "esri/layers/FeatureLayer",
-      "esri/geometry/Point"
-    ], function (Map, MapView, Graphic, FeatureLayer, Point) {
+      "esri/layers/MapImageLayer",
+      "esri/geometry/Point",
+      "esri/widgets/Locate",
+      "esri/widgets/LayerList"
+    ], function (Map, MapView, Graphic, FeatureLayer, MapImageLayer, Point, Locate, LayerList) {
       
       const map = new Map({ basemap: "satellite" });
 
@@ -56,14 +59,31 @@
         zoom: 10
       });
 
-      // ✅ NUMARATAJ KATMANI
+      // ✅ Tüm Katmanları Haritaya Ekle
       const numaratajLayer = new FeatureLayer({
         url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer/0"
       });
 
+      const adresLayer = new MapImageLayer({
+        url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer"
+      });
+
+      map.add(adresLayer);
       map.add(numaratajLayer);
 
-      // 🔍 Arama Butonu İşlevi
+      // 🔍 Katman Listesi Ekle (Aç/Kapa Yapmak İçin)
+      const layerList = new LayerList({
+        view: view
+      });
+      view.ui.add(layerList, "top-right");
+
+      // 📍 Kullanıcının Mevcut Konumunu Göster
+      const locateWidget = new Locate({
+        view: view
+      });
+      view.ui.add(locateWidget, "top-left");
+
+      // 🔍 Kimlikno ile Arama İşlevi
       document.getElementById("searchButton").addEventListener("click", function () {
         let kimlikNo = document.getElementById("searchInput").value.trim();
         
@@ -102,6 +122,25 @@
 
               view.graphics.removeAll(); // Önceki işaretleri temizle
               view.graphics.add(graphic);
+
+              // 📲 WhatsApp Konum Paylaşımı
+              const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
+              const whatsappMessage = `Bu kimlikno'ya ait konumu paylaşıyorum! Koordinatlar: ${shareableLink}`;
+              const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
+
+              // 🔹 Önce konumu göster, sonra paylaş
+              setTimeout(() => {
+                if (confirm(`Bu kimlikno için koordinatlar bulundu:\n${shareableLink}\n\nWhatsApp ile paylaşmak ister misiniz?`)) {
+                  window.open(whatsappLink, '_blank');
+                }
+              }, 2000);
+
+              // 📌 Koordinatı panoya kopyala
+              navigator.clipboard.writeText(shareableLink).then(function () {
+                console.log("Bağlantı kopyalandı: " + shareableLink);
+              }, function (err) {
+                console.error("Bağlantı kopyalanırken hata oluştu", err);
+              });
 
             } else {
               alert("Girilen kimlikno ile eşleşen bir kayıt bulunamadı.");
