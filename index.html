@@ -3,40 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Erzurum Harita Koordinat Paylaşımı</title>
+  <title>Erzurum Acil Bilgi Sistemi</title>
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
   <script src="https://js.arcgis.com/4.26/"></script>
   <style>
-    #viewDiv {
-      height: 90vh;
-      width: 100%;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
     }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Üst Başlık */
+    #header {
+      height: 3cm;
+      background: #c0392b; /* Kırmızı */
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Ana İçerik */
+    #content {
+      display: flex;
+      flex-grow: 1;
+    }
+
+    /* Sol Panel - Arama ve Katman Listesi */
+    #leftPanel {
+      width: 300px;
+      background: #c0392b; /* Kırmızı */
+      color: white;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
     #searchContainer {
-      position: absolute;
-      top: 10px;
-      left: 10px;
       background: white;
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      z-index: 10;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     }
+
     #searchInput {
-      padding: 5px;
-      width: 200px;
+      padding: 8px;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+      outline: none;
     }
+
     #searchButton {
-      padding: 5px;
+      padding: 10px;
+      width: 100%;
+      margin-top: 10px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
+    }
+
+    #searchButton:hover {
+      background: #b92d22;
+    }
+
+    #basemapSelector {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #basemapSelector button {
+      padding: 10px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #basemapSelector button:hover {
+      background: #b92d22;
+    }
+
+    #layerList {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Sağ Panel - Harita */
+    #viewDiv {
+      flex-grow: 1;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
-  <div id="searchContainer">
-    <input type="text" id="searchInput" placeholder="KIMLIKNO girin">
-    <button id="searchButton">Ara</button>
+
+  <!-- Üst Başlık -->
+  <div id="header">
+    ERZURUM ACİL BİLGİ SİSTEMİ
   </div>
-  <div id="viewDiv"></div>
+
+  <!-- Ana İçerik -->
+  <div id="content">
+    <!-- Sol Panel (Arama & Katman Listesi) -->
+    <div id="leftPanel">
+      <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="KIMLIKNO girin">
+        <button id="searchButton">Ara</button>
+      </div>
+      <div id="basemapSelector">
+        <button onclick="changeBasemap('streets')">Sokak</button>
+        <button onclick="changeBasemap('topo')">Topoğrafya</button>
+      </div>
+      <div id="layerList"></div> <!-- Katman listesi buraya gelecek -->
+    </div>
+
+    <!-- Sağ Panel (Harita) -->
+    <div id="viewDiv"></div>
+  </div>
 
   <script>
     require([
@@ -47,8 +152,9 @@
       "esri/layers/MapImageLayer",
       "esri/geometry/Point",
       "esri/widgets/Locate",
-      "esri/widgets/LayerList"
-    ], function (Map, MapView, Graphic, FeatureLayer, MapImageLayer, Point, Locate, LayerList) {
+      "esri/widgets/LayerList",
+      "esri/layers/GraphicsLayer"
+    ], function (Map, MapView, Graphic, FeatureLayer, MapImageLayer, Point, Locate, LayerList, GraphicsLayer) {
       
       const map = new Map({ basemap: "satellite" });
 
@@ -59,23 +165,29 @@
         zoom: 10
       });
 
-      // ✅ Tüm Katmanları Haritaya Ekle
-      const numaratajLayer = new FeatureLayer({
-        url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer/0"
-      });
-
+      // ✅ MapServer Katmanlarını Haritaya Ekle (Numarataj hariç)
       const adresLayer = new MapImageLayer({
         url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer"
       });
 
+      const numaratajLayer = new FeatureLayer({
+        url: "https://gis.erzurum.bel.tr/server/rest/services/KENTREHBERI/ADRESSORGU/MapServer/0",
+        visible: false, // Başlangıçta kapalı
+        outFields: ["*"] // Tüm alanları yükle
+      });
+
+      // Grafik katmanı ekle
+      const graphicsLayer = new GraphicsLayer();
+      map.add(graphicsLayer);
+
       map.add(adresLayer);
       map.add(numaratajLayer);
 
-      // 🔍 Katman Listesi Ekle (Aç/Kapa Yapmak İçin)
+      // 🔍 Katman Listesi Ekle (Sol tarafa taşındı)
       const layerList = new LayerList({
-        view: view
+        view: view,
+        container: "layerList"
       });
-      view.ui.add(layerList, "top-right");
 
       // 📍 Kullanıcının Mevcut Konumunu Göster
       const locateWidget = new Locate({
@@ -84,75 +196,66 @@
       view.ui.add(locateWidget, "top-left");
 
       // 🔍 Kimlikno ile Arama İşlevi
-      document.getElementById("searchButton").addEventListener("click", function () {
-        let kimlikNo = document.getElementById("searchInput").value.trim();
+      document.getElementById("searchButton").addEventListener("click", async function () {
+        const kimlikNo = document.getElementById("searchInput").value.trim();
         
-        if (!kimlikNo) {
-          alert("Lütfen bir KIMLIKNO girin.");
+        if (!kimlikNo || !/^\d+$/.test(kimlikNo)) {
+          alert("Lütfen geçerli bir KIMLIKNO girin (sadece sayılar).");
           return;
         }
 
-        // 🔍 ArcGIS Query Yapısı
-        const query = numaratajLayer.createQuery();
-        query.where = `kimlikno = '${kimlikNo}'`; // Küçük harfli "kimlikno" kullanıldı
-        query.returnGeometry = true;
-        query.outFields = ["kimlikno"];
+        // Butonu devre dışı bırak ve yükleme durumunu göster
+        this.disabled = true;
+        this.textContent = "Aranıyor...";
 
-        numaratajLayer.queryFeatures(query)
-          .then(function (response) {
-            if (response.features.length > 0) {
-              const feature = response.features[0]; // İlk bulunan kayıt
-              const point = feature.geometry; // Nokta geometrisini al
+        try {
+          const query = numaratajLayer.createQuery();
+          query.where = `kimlikno = '${kimlikNo}'`; // Küçük harfli "kimlikno" kullanıldı
+          query.returnGeometry = true;
+          query.outFields = ["kimlikno"];
 
-              // 📌 Haritayı noktaya kaydır
-              view.goTo({
-                target: point,
-                zoom: 18
-              });
+          const response = await numaratajLayer.queryFeatures(query);
+          if (response.features.length > 0) {
+            const feature = response.features[0]; // İlk bulunan kayıt
+            const point = feature.geometry; // Nokta geometrisini al
 
-              // 🟥 Grafik ekleyerek işaretle
-              const graphic = new Graphic({
-                geometry: point,
-                symbol: {
-                  type: "simple-marker",
-                  color: "red",
-                  size: "12px"
-                }
-              });
+            // 📌 Haritayı noktaya kaydır
+            await view.goTo({
+              target: point,
+              zoom: 18
+            });
 
-              view.graphics.removeAll(); // Önceki işaretleri temizle
-              view.graphics.add(graphic);
+            // 🟥 Grafik ekleyerek işaretle
+            const graphic = new Graphic({
+              geometry: point,
+              symbol: {
+                type: "simple-marker",
+                color: "red",
+                size: "12px"
+              },
+              popupTemplate: {
+                title: "Kimlik No: {kimlikno}",
+                content: "Bu nokta, arama sonucunda bulundu."
+              }
+            });
 
-              // 📲 WhatsApp Konum Paylaşımı
-              const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
-              const whatsappMessage = `Bu kimlikno'ya ait konumu paylaşıyorum! Koordinatlar: ${shareableLink}`;
-              const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
+            graphicsLayer.removeAll(); // Önceki işaretleri temizle
+            graphicsLayer.add(graphic);
 
-              // 🔹 Önce konumu göster, sonra paylaş
-              setTimeout(() => {
-                if (confirm(`Bu kimlikno için koordinatlar bulundu:\n${shareableLink}\n\nWhatsApp ile paylaşmak ister misiniz?`)) {
-                  window.open(whatsappLink, '_blank');
-                }
-              }, 2000);
-
-              // 📌 Koordinatı panoya kopyala
-              navigator.clipboard.writeText(shareableLink).then(function () {
-                console.log("Bağlantı kopyalandı: " + shareableLink);
-              }, function (err) {
-                console.error("Bağlantı kopyalanırken hata oluştu", err);
-              });
-
-            } else {
-              alert("Girilen kimlikno ile eşleşen bir kayıt bulunamadı.");
-            }
-          })
-          .catch(function (error) {
-            console.error("❌ Sorgu hatası:", error);
-            alert("Bir hata oluştu. Konsolu kontrol edin.");
-          });
+          } else {
+            alert("Girilen kimlikno ile eşleşen bir kayıt bulunamadı.");
+          }
+        } catch (error) {
+          console.error("❌ Sorgu hatası:", error);
+          alert("Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
+        } finally {
+          // Butonu tekrar aktif et
+          this.disabled = false;
+          this.textContent = "Ara";
+        }
       });
 
-      // 🟢 Tıklanan Noktayı WhatsApp ile Paylaşma
+      // 🟢 Tıklanan Noktayı WhatsApp ile Paylaşma (Önce Onay Soracak)
       view.on("click", function (event) {
         const point = new Point({
           longitude: event.mapPoint.longitude,
@@ -163,17 +266,16 @@
         const whatsappMessage = `Haritada bir nokta paylaşıyorum! Koordinatlar: ${shareableLink}`;
         const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
 
-        if (confirm(`Koordinatlar paylaşıma hazır:\n${shareableLink}\n\nWhatsApp ile paylaşmak ister misiniz?`)) {
+        // ✅ Önce onay soracak
+        if (confirm(`Bu noktayı paylaşmak istiyor musunuz?\n\n${shareableLink}`)) {
           window.open(whatsappLink, '_blank');
         }
-
-        navigator.clipboard.writeText(shareableLink).then(function () {
-          console.log("Bağlantı kopyalandı: " + shareableLink);
-        }, function (err) {
-          console.error("Bağlantı kopyalanırken hata oluştu", err);
-        });
       });
 
+      // Baz Harita Değiştirme Fonksiyonu
+      window.changeBasemap = function (basemapType) {
+        map.basemap = basemapType;
+      };
     });
   </script>
 </body>
