@@ -186,7 +186,7 @@
 
   <!-- Üst Başlık -->
   <div id="header">
-    ERZURUM ACİL BİLGİ SİSTEMİ
+    ERZURUM 112 ACİL BİLGİ SİSTEMİ
     <button id="menuToggle">☰</button>
   </div>
 
@@ -195,15 +195,14 @@
     <!-- Sol Panel (Arama & Katman Listesi) -->
     <div id="leftPanel">
       <div id="searchContainer">
-        <input type="text" id="searchInput" placeholder="KIMLIKNO girin">
+        <input type="text" id="searchInput" placeholder="Bina Kimlik Numarasını Giriniz">
         <button id="searchButton">Ara</button>
       </div>
       <div id="basemapSelector">
-        <button onclick="changeBasemap('streets')">Sokak</button>
-        <button onclick="changeBasemap('topo')">Topoğrafya</button>
+        <button onclick="changeBasemap('streets')">Sokak Görüntüsü</button>
+      	<button onclick="changeBasemap('satellite')">Uydu Görüntüsü</button>
       </div>
-      <div id="layerList"></div> <!-- Katman listesi buraya gelecek -->
-    </div>
+        </div>
 
     <!-- Sağ Panel (Harita) -->
     <div id="viewDiv"></div>
@@ -228,10 +227,10 @@
         container: "viewDiv",
         map: map,
         center: [41.2867, 39.9208], // Erzurum koordinatları
-        zoom: 10,
+        zoom: 8.7,
         constraints: {
-          minZoom: 5,
-          maxZoom: 18
+          minZoom: 9,
+          maxZoom: 20
         }
       });
 
@@ -292,7 +291,7 @@
             // 📌 Haritayı noktaya kaydır
             await view.goTo({
               target: point,
-              zoom: 18
+              zoom: 35
             });
 
             // 🟥 Grafik ekleyerek işaretle
