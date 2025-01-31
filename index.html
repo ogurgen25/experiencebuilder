@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Erzurum Acil Bilgi Sistemi</title>
   <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
   <script src="https://js.arcgis.com/4.26/"></script>
@@ -22,15 +22,34 @@
 
     /* Üst Başlık */
     #header {
-      height: 3cm;
+      height: 2cm;
       background: #c0392b; /* Kırmızı */
       color: white;
-      font-size: 24px;
+      font-size: 18px;
       font-weight: bold;
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 10px;
+      position: relative;
+    }
+
+    /* Menü Toggle Düğmesi */
+    #menuToggle {
+      position: absolute;
+      left: 10px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px;
+      display: none; /* Başlangıçta gizli */
+    }
+
+    #menuToggle:hover {
+      color: #ecf0f1;
     }
 
     /* Ana İçerik */
@@ -48,6 +67,13 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
+      transition: 0.3s;
+    }
+
+    #leftPanel.closed {
+      width: 0;
+      padding: 0;
+      overflow: hidden;
     }
 
     #searchContainer {
@@ -115,6 +141,45 @@
       flex-grow: 1;
       height: 100vh;
     }
+
+    /* Mobil Görünüm için Stil Ayarları */
+    @media (max-width: 768px) {
+      #header {
+        font-size: 16px;
+        height: 1.5cm;
+      }
+
+      #menuToggle {
+        display: block; /* Mobilde toggle düğmesini göster */
+      }
+
+      #content {
+        flex-direction: column;
+      }
+
+      #leftPanel {
+        width: 100%;
+        padding: 10px;
+        gap: 10px;
+      }
+
+      #leftPanel.closed {
+        width: 0;
+        padding: 0;
+      }
+
+      #searchContainer, #basemapSelector, #layerList {
+        padding: 10px;
+      }
+
+      #searchInput, #searchButton, #basemapSelector button {
+        font-size: 14px;
+      }
+
+      #viewDiv {
+        height: 70vh; /* Mobilde harita yüksekliğini azalt */
+      }
+    }
   </style>
 </head>
 <body>
@@ -122,6 +187,7 @@
   <!-- Üst Başlık -->
   <div id="header">
     ERZURUM ACİL BİLGİ SİSTEMİ
+    <button id="menuToggle">☰</button>
   </div>
 
   <!-- Ana İçerik -->
@@ -162,7 +228,11 @@
         container: "viewDiv",
         map: map,
         center: [41.2867, 39.9208], // Erzurum koordinatları
-        zoom: 10
+        zoom: 10,
+        constraints: {
+          minZoom: 5,
+          maxZoom: 18
+        }
       });
 
       // ✅ MapServer Katmanlarını Haritaya Ekle (Numarataj hariç)
@@ -276,6 +346,15 @@
       window.changeBasemap = function (basemapType) {
         map.basemap = basemapType;
       };
+
+      // Menü Toggle Fonksiyonu
+      document.getElementById("menuToggle").addEventListener("click", function() {
+        const leftPanel = document.getElementById("leftPanel");
+        leftPanel.classList.toggle("closed");
+        
+        // Toggle düğmesini panel kapalıyken görünür kılmak için
+        this.style.left = leftPanel.classList.contains("closed") ? "10px" : "310px";
+      });
     });
   </script>
 </body>
