@@ -36,16 +36,28 @@
     }
 
     /* Menü Toggle Düğmesi */
+   #menuToggle {
+    position: fixed; /* 📌 Sabitle (mobilde kaybolmasını önler) */
+    top: 10px; /* Üstten biraz mesafe ver */
+    left: 10px; /* Her zaman solda dursun */
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    z-index: 1000; /* 📌 Harita ve diğer öğelerin üstünde olsun */
+}
+
+/* 📌 Mobil için buton konumunu düzenle */
+@media (max-width: 768px) {
     #menuToggle {
-      position: absolute;
-      left: 10px;
-      background: none;
-      border: none;
-      color: white;
-      font-size: 24px;
-      cursor: pointer;
-      padding: 5px;
-      display: none; /* Başlangıçta gizli */
+        left: 10px !important; /* Mobilde sabit kalmalı */
+        top: 5px;
+    }
+}
+
+      display: block; /* Butonun görünmesini sağla */
     }
 
     #menuToggle:hover {
@@ -179,6 +191,19 @@
       #viewDiv {
         height: 70vh; /* Mobilde harita yüksekliğini azalt */
       }
+/* Menü butonunun konumu dinamik olarak değişsin */
+#menuToggle {
+    transition: left 0.3s ease-in-out; /* Yumuşak geçiş efekti */
+}
+
+/* 📌 Mobil ekranlar için butonun kaymasını engelle */
+@media (max-width: 768px) {
+    #menuToggle {
+        left: 10px !important; /* Mobilde her zaman solda sabit kal */
+        top: 5px; /* Butonu biraz yukarı al */
+    }
+}
+
     }
   </style>
 </head>
@@ -199,11 +224,12 @@
         <button id="searchButton">Ara</button>
       </div>
       <div id="basemapSelector">
-        <button onclick="changeBasemap('streets')">Sokak Görüntüsü</button>
-      	<button onclick="changeBasemap('satellite')">Uydu Görüntüsü</button>
+        <button onclick="changeBasemap('streets')">🛣 Sokak Haritası</button>
+   	<button onclick="changeBasemap('satellite')">🛰 Uydu Görüntüsü</button>
+    	<button onclick="changeBasemap('topo')">🗺 Topoğrafik Harita</button>
+   	<button onclick="changeBasemap('dark-gray')">🌙 Karanlık Mod</button>
       </div>
         </div>
-
     <!-- Sağ Panel (Harita) -->
     <div id="viewDiv"></div>
   </div>
@@ -224,15 +250,17 @@
       const map = new Map({ basemap: "satellite" });
 
       const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: [41.2867, 39.9208], // Erzurum koordinatları
-        zoom: 8.7,
-        constraints: {
-          minZoom: 9,
-          maxZoom: 20
-        }
-      });
+    container: "viewDiv",
+    map: map,
+    center: [41.2726, 39.9086], // 📌 Erzurum il merkezi koordinatları
+    zoom: 13, // 📌 Daha yakın açılması için artırıldı
+    constraints: {
+        minZoom: 10, // 📌 Kullanıcının fazla uzaklaşmasını engellemek için minimum zoom seviyesi
+        maxZoom: 21 // 📌 Daha fazla yakınlaştırmaya izin veriyoruz
+    }
+});
+
+
 
       // ✅ MapServer Katmanlarını Haritaya Ekle (Numarataj hariç)
       const adresLayer = new MapImageLayer({
@@ -248,16 +276,9 @@
       // Grafik katmanı ekle
       const graphicsLayer = new GraphicsLayer();
       map.add(graphicsLayer);
-
       map.add(adresLayer);
       map.add(numaratajLayer);
-
-      // 🔍 Katman Listesi Ekle (Sol tarafa taşındı)
-      const layerList = new LayerList({
-        view: view,
-        container: "layerList"
-      });
-
+   
       // 📍 Kullanıcının Mevcut Konumunu Göster
       const locateWidget = new Locate({
         view: view
@@ -278,10 +299,10 @@
         this.textContent = "Aranıyor...";
 
         try {
-          const query = numaratajLayer.createQuery();
-          query.where = `kimlikno = '${kimlikNo}'`; // Küçük harfli "kimlikno" kullanıldı
-          query.returnGeometry = true;
-          query.outFields = ["kimlikno"];
+         const query = numaratajLayer.createQuery();
+query.where = `kimlikno = '${kimlikNo}'`;
+query.returnGeometry = true;
+query.outFields = ["kimlikno"];
 
           const response = await numaratajLayer.queryFeatures(query);
           if (response.features.length > 0) {
@@ -324,36 +345,223 @@
         }
       });
 
-      // 🟢 Tıklanan Noktayı WhatsApp ile Paylaşma (Önce Onay Soracak)
-      view.on("click", function (event) {
-        const point = new Point({
-          longitude: event.mapPoint.longitude,
-          latitude: event.mapPoint.latitude
-        });
-
-        const shareableLink = `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
-        const whatsappMessage = `Haritada bir nokta paylaşıyorum! Koordinatlar: ${shareableLink}`;
-        const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
-
-        // ✅ Önce onay soracak
-        if (confirm(`Bu noktayı paylaşmak istiyor musunuz?\n\n${shareableLink}`)) {
-          window.open(whatsappLink, '_blank');
-        }
-      });
-
-      // Baz Harita Değiştirme Fonksiyonu
+            // Baz Harita Değiştirme Fonksiyonu
       window.changeBasemap = function (basemapType) {
         map.basemap = basemapType;
       };
 
-      // Menü Toggle Fonksiyonu
-      document.getElementById("menuToggle").addEventListener("click", function() {
-        const leftPanel = document.getElementById("leftPanel");
-        leftPanel.classList.toggle("closed");
+// 📌 Günlük verileri kaydetme fonksiyonu
+function saveSearchData(type, data) {
+    let today = new Date().toISOString().split("T")[0];
+    let storedData = JSON.parse(localStorage.getItem("searchHistory")) || {};
+
+    // 📌 1️⃣ 30 günden eski verileri temizle
+    let maxDays = 15;
+    let cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxDays);
+    let cutoffString = cutoffDate.toISOString().split("T")[0];
+
+    Object.keys(storedData).forEach(date => {
+        if (date < cutoffString) {
+            delete storedData[date]; // Eski verileri kaldır
+        }
+    });
+
+    // 📌 2️⃣ Günlük verileri ekleyelim
+    if (!storedData[today]) {
+        storedData[today] = { searches: [], shares: [] };
+    }
+
+    if (type === "search") {
+        storedData[today].searches.push(data);
+    } else if (type === "share") {
+        storedData[today].shares.push(data);
+    }
+
+    localStorage.setItem("searchHistory", JSON.stringify(storedData));
+}
+
+// 📌 Günlük ve tarih bazlı istatistikleri alma fonksiyonu
+function getDailyStats(date = null) {
+    let storedData = JSON.parse(localStorage.getItem("searchHistory")) || {};
+
+    // 📌 Eğer tarih seçilmezse bugünün tarihini al
+    if (!date) {
+        date = new Date().toISOString().split("T")[0];
+    }
+
+    // 📌 Eğer veri yoksa "kayıt bulunamadı" mesajı ver
+    if (!storedData[date]) {
+        alert(`📅 ${date} tarihinde herhangi bir kayıt bulunamadı.`);
+        return;
+    }
+
+    let searchCount = storedData[date].searches.length;
+    let shareCount = storedData[date].shares.length;
+
+    let message = `📅 **Tarih:** ${date}\n🔍 **Yapılan Aramalar:** ${searchCount}\n📍 **Paylaşılan Konumlar:** ${shareCount}\n\n`;
+
+    if (shareCount > 0) {
+        message += "**📌 Paylaşılan Konumlar:**\n";
+        storedData[date].shares.forEach((point, index) => {
+            message += `${index + 1}. **Koordinatlar:** ${point.latitude}, ${point.longitude}\n`;
+        });
+    }
+
+    alert(message);
+}
+
+// 🔍 Arama yapınca kaydet
+document.getElementById("searchButton").addEventListener("click", function () {
+    const kimlikNo = document.getElementById("searchInput").value.trim();
+    if (/^\d{9}$/.test(kimlikNo)) {
+        saveSearchData("search", kimlikNo);
+    }
+});
+
+// Arama Yapma ve Kaydetme
+
+view.on("click", function (event) {
+    if (!event.mapPoint) {
+        alert("Haritada geçerli bir noktaya tıklayın.");
+        return;
+    }
+
+    const longitude = event.mapPoint.longitude.toFixed(6);
+    const latitude = event.mapPoint.latitude.toFixed(6);
+
+    const point = {
+        latitude: latitude,
+        longitude: longitude
+    };
+
+    const shareableLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    const whatsappMessage = `📍 Vakaya Ait Konumu Paylaşıyorum!\nKoordinatlar:\nLat: ${latitude}, Lon: ${longitude}\nBağlantı: ${shareableLink}`;
+    const whatsappLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
+
+    const confirmationMessage = `📍 **Seçilen Nokta:**\nLatitude: ${latitude}\nLongitude: ${longitude}\n\nBu noktayı WhatsApp'ta paylaşmak istiyor musunuz?`;
+
+    if (confirm(confirmationMessage)) {
+        saveSearchData("share", point); // 📌 Nokta kaydedilecek
+        window.open(whatsappLink, '_blank'); // 📌 WhatsApp linki açılacak
+    }
+});
+
+// 📊 Günlük rapor butonu ekleyelim
+document.body.insertAdjacentHTML("beforeend", `
+    <div id="statsContainer" style="
+        position: fixed; 
+        bottom: 20px; 
+        right: 20px; 
+        background: white; 
+        padding: 15px; 
+        border-radius: 10px; 
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    ">
+        <input type="date" id="statsDateInput" style="padding: 5px; width: 100%;">
+        <button id="dailyStatsButton" style="
+            padding: 8px 15px; 
+            background: #2c3e50; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            width: 100%;
+        ">📊 İstatistikleri Göster</button>
+        <button id="exportExcelButton" style="
+            padding: 8px 15px; 
+            background: green; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            width: 100%;
+        ">📥 Excel'e Aktar</button>
+    </div>
+`);
+
+document.getElementById("dailyStatsButton").addEventListener("click", function () {
+    const selectedDate = document.getElementById("statsDateInput").value;
+    if (selectedDate) {
+        getDailyStats(selectedDate);
+    } else {
+        getDailyStats();
+    }
+});
+// 📌 Excel'e aktarma işlemi için fonksiyon
+function exportToExcel() {
+    let storedData = JSON.parse(localStorage.getItem("searchHistory")) || {};
+    let csvContent = "\uFEFFTarih,Arama Yapılan Kimlik Numaraları,Paylaşılan Konumlar\n"; // ✅ UTF-8 BOM EKLENDİ
+
+    Object.keys(storedData).forEach(date => {
+        let searches = storedData[date].searches.length > 0 ? storedData[date].searches.join(" | ") : "Yok";
+        let shares = storedData[date].shares.length > 0 
+            ? storedData[date].shares.map(point => `${point.latitude},${point.longitude}`).join(" | ") 
+            : "Yok";
         
-        // Toggle düğmesini panel kapalıyken görünür kılmak için
-        this.style.left = leftPanel.classList.contains("closed") ? "10px" : "310px";
-      });
+        csvContent += `${date},"${searches}","${shares}"\n`; // ✅ Excel’in daha iyi okuması için tırnak içinde yazıldı
+    });
+
+    let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Gunluk_Istatistikler_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+document.getElementById("exportExcelButton").addEventListener("click", function () {
+    if (confirm("📥 Günlük istatistikleri Excel (CSV) olarak indirmek istiyor musunuz?")) {
+        exportToExcel();
+        alert("📂 Dosya başarıyla indirildi! Eğer Türkçe karakterlerde bozulma olursa, Excel’de UTF-8 olarak açın.");
+    }
+});
+
+// Enter'a basılınca çalıştırma ve 9 haneli doğrulama
+document.getElementById("searchInput").addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        const kimlikNo = document.getElementById("searchInput").value.trim();
+
+        if (!/^\d{9}$/.test(kimlikNo)) { // Eğer giriş 9 haneli değilse
+            alert("Lütfen 9 haneli bir kimlik numarası giriniz.");
+            return;
+        }
+
+        document.getElementById("searchButton").click(); // Butona tıklama işlemi
+    }
+});
+
+// Ek olarak, butona tıklayınca da kontrol yapalım:
+document.getElementById("searchButton").addEventListener("click", function(event) {
+    const kimlikNo = document.getElementById("searchInput").value.trim();
+
+    if (!/^\d{9}$/.test(kimlikNo)) { // Eğer giriş 9 haneli değilse
+        alert("Lütfen 9 haneli bir kimlik numarası giriniz.");
+        return;
+    }
+});
+
+
+      // Menü Toggle Fonksiyonu
+   document.getElementById("menuToggle").addEventListener("click", function() {
+    const leftPanel = document.getElementById("leftPanel");
+    leftPanel.classList.toggle("closed");
+
+    // 📌 Menü kapandığında butonun konumunu dinamik olarak ayarla
+    if (leftPanel.classList.contains("closed")) {
+        this.style.left = "10px"; // Menü kapalıysa sola kaydır
+        this.style.transition = "left 0.3s ease-in-out"; // Animasyon ekle
+    } else {
+        this.style.left = leftPanel.offsetWidth + "px"; // Menü açıksa genişliğe göre ayarla
+    }
+});
+
     });
   </script>
 </body>
